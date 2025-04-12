@@ -5,6 +5,8 @@ import interactionPlugin from '@fullcalendar/interaction';
 
 import './calendar.css';
 
+const TournamentCalendar = () => {
+
 export default function TournamentCalendar() {
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
@@ -509,5 +511,7 @@ export default function TournamentCalendar() {
         </div>
       )}
     </div>
-  );
+ };
 
+ export default TournamentCalendar;
+ 
