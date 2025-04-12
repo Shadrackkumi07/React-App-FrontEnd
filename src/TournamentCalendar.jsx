@@ -480,9 +480,6 @@ export default function TournamentCalendar() {
   </div>
 )}
 
-
-
-
                   <div className="absolute top-2 right-2 space-x-2">
                     <button
                       onClick={() => handleEditFromModal(event, events.findIndex((e) => e === event))}
@@ -513,4 +510,4 @@ export default function TournamentCalendar() {
       )}
     </div>
   );
-}
+
