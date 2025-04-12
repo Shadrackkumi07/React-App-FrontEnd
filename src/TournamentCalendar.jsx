@@ -145,13 +145,14 @@ export default function TournamentCalendar() {
   };
 
   const formatTime = (timeStr) => {
+    if (!timeStr || !timeStr.includes(':')) return 'N/A';
     const [hour, minute] = timeStr.split(':');
     const h = parseInt(hour);
     const suffix = h >= 12 ? 'PM' : 'AM';
     const hour12 = h % 12 || 12;
     return `${hour12}:${minute} ${suffix}`;
   };
-
+  
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.startTime || !formData.endTime) return;
@@ -177,6 +178,7 @@ export default function TournamentCalendar() {
         console.error('Image upload failed:', error);
       }
     }
+  
   
     const newEvent = {
       title: formData.title,
