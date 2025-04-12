@@ -1,0 +1,29 @@
+/* calendar.css */
+
+.fc-daygrid-day {
+    transition: background 0.3s ease;
+  }
+  
+  .fc-daygrid-day:hover {
+    background-color: #f0f9ff;
+    transition: background-color 0.2s ease-in-out;
+  }
+  
+  .calendar-event:hover {
+    background-color: #e0f2fe;
+  }
+  
+  .calendar-event {
+    background-color: #e2e8f0;
+    padding: 2px 4px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  
