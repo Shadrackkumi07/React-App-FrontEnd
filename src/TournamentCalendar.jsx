@@ -29,12 +29,14 @@ export default function TournamentCalendar() {
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments`);
-        const data = await response.json();
-        const formatted = data.map(t => ({
+        const res = await fetch("/api/tournaments");
+        const data = await res.json();
+  
+        const mapped = data.map((t) => ({
           title: t.title,
           date: t.date,
           extendedProps: {
+            _id: t._id,
             fullTitle: t.title,
             startTime: t.startTime,
             endTime: t.endTime,
@@ -44,14 +46,16 @@ export default function TournamentCalendar() {
             links: t.links,
           },
         }));
-        setEvents(formatted);
-      } catch (err) {
-        console.error('Failed to fetch tournaments:', err);
+  
+        setEvents(mapped);
+      } catch (error) {
+        console.error("Failed to fetch tournaments", error);
       }
     };
   
     fetchTournaments();
   }, []);
+  
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -234,13 +238,27 @@ export default function TournamentCalendar() {
     setEditingEventIndex(null);
   };
 
-  const handleDelete = (index) => {
-    if (window.confirm('Are you sure you want to delete this tournament?')) {
-      const updated = [...events];
-      updated.splice(index, 1);
-      setEvents(updated);
+  const handleDelete = async (tournamentId) => {
+    if (!window.confirm('Are you sure you want to delete this tournament?')) return;
+  
+    try {
+      // Call backend to delete
+      await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments/${tournamentId}`, {
+        method: 'DELETE',
+      });
+  
+      // Update frontend state
+      setEvents((prev) =>
+        prev.filter((event) => event.extendedProps._id !== tournamentId)
+      );
+      setSelectedTournaments((prev) =>
+        prev.filter((t) => t._id !== tournamentId)
+      );
+    } catch (error) {
+      console.error('Error deleting tournament:', error);
     }
   };
+  
 
   const handleEditFromModal = (event, index) => {
     setFormData({
@@ -477,13 +495,15 @@ export default function TournamentCalendar() {
 
                   <div className="absolute top-2 right-2 space-x-2">
                     <button
-                      onClick={() => handleEditFromModal(event, events.findIndex((e) => e === event))}
+                      onClick={() => handleEditFromModal(event)}
+
                       className="text-sm bg-yellow-400 px-2 py-1 rounded hover:bg-yellow-500"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(events.findIndex((e) => e === event))}
+                      onClick={() => handleDelete(event.extendedProps._id)}
+
                       className="text-sm bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                     >
                       Delete
