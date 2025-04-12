@@ -5,8 +5,6 @@ import interactionPlugin from '@fullcalendar/interaction';
 
 import './calendar.css';
 
-const TournamentCalendar = () => {
-
 export default function TournamentCalendar() {
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
@@ -54,7 +52,6 @@ export default function TournamentCalendar() {
   
     fetchTournaments();
   }, []);
-  
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -131,9 +128,9 @@ export default function TournamentCalendar() {
     if (name === 'image') {
       setFormData({ ...formData, image: files[0] });
     } else if (name.startsWith('link-name-') || name.startsWith('link-url-')) {
-      const parts = name.split('-'); // e.g. ['link', 'name', '0']
+      const parts = name.split('-');
       const index = parseInt(parts[2]);
-      const field = parts[1]; // 'name' or 'url'
+      const field = parts[1];
   
       const updatedLinks = [...formData.links];
       updatedLinks[index][field] = value;
@@ -142,7 +139,6 @@ export default function TournamentCalendar() {
       setFormData({ ...formData, [name]: value });
     }
   };
-  
 
   const addLinkField = () => {
     setFormData({ ...formData, links: [...formData.links, { name: '', url: '' }] });
@@ -160,13 +156,12 @@ export default function TournamentCalendar() {
     e.preventDefault();
     if (!formData.title || !formData.startTime || !formData.endTime) return;
   
-    // Upload image to Cloudinary if there's an image
     let imageUrl = null;
   
     if (formData.image) {
       const uploadData = new FormData();
       uploadData.append('file', formData.image);
-      uploadData.append('upload_preset', 'tourney'); // your unassigned preset
+      uploadData.append('upload_preset', 'tourney');
   
       try {
         const response = await fetch(
@@ -183,7 +178,6 @@ export default function TournamentCalendar() {
       }
     }
   
-    // Create the new event object for your frontend calendar
     const newEvent = {
       title: formData.title,
       date: selectedDate,
@@ -198,7 +192,6 @@ export default function TournamentCalendar() {
       },
     };
   
-    // Save to backend
     try {
       await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments`, {
         method: 'POST',
@@ -218,22 +211,23 @@ export default function TournamentCalendar() {
       console.error('Error saving tournament to backend:', err);
     }
   
-    // Add event to calendar
-    setEvents([...events, newEvent]);
-    setShowForm(false);
-  };  
-  
-    
-
     let updatedEvents = [...events];
     if (editingEventIndex !== null) {
       updatedEvents[editingEventIndex] = newEvent;
     } else {
       updatedEvents.push(newEvent);
     }
-
+  
     setEvents(updatedEvents);
-    setFormData({ title: '', image: null, startTime: '', endTime: '', links: [{ name: '', url: '' }] });
+    setFormData({
+      title: '',
+      image: null,
+      startTime: '',
+      endTime: '',
+      note: '',
+      platforms: [],
+      links: [{ name: '', url: '' }],
+    });
     setShowForm(false);
     setEditingEventIndex(null);
   };
@@ -252,6 +246,8 @@ export default function TournamentCalendar() {
       image: null,
       startTime: event.extendedProps.startTime,
       endTime: event.extendedProps.endTime,
+      note: event.extendedProps.note,
+      platforms: event.extendedProps.platforms || [],
       links: event.extendedProps.links.length > 0 ? event.extendedProps.links : [{ name: '', url: '' }],
     });
     setSelectedDate(event.date);
@@ -295,132 +291,128 @@ export default function TournamentCalendar() {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 transition-all animate-fade-in">
           <form
-  className="bg-white p-6 rounded-xl shadow-xl w-96 space-y-4"
-  onSubmit={handleFormSubmit}
->
-  <h2 className="text-xl font-bold">
-    {editingEventIndex !== null ? 'Edit Tournament' : 'Schedule Tournament'}
-  </h2>
-  <input
-    type="text"
-    name="title"
-    value={formData.title}
-    onChange={handleInputChange}
-    placeholder="Tournament Name"
-    className="w-full p-2 border rounded"
-    required
-  />
-  <div className="flex space-x-2">
-    <input
-      type="time"
-      name="startTime"
-      value={formData.startTime}
-      onChange={handleInputChange}
-      className="w-1/2 p-2 border rounded"
-      required
-    />
-    <input
-      type="time"
-      name="endTime"
-      value={formData.endTime}
-      onChange={handleInputChange}
-      className="w-1/2 p-2 border rounded"
-    />
-  </div>
+            className="bg-white p-6 rounded-xl shadow-xl w-96 space-y-4"
+            onSubmit={handleFormSubmit}
+          >
+            <h2 className="text-xl font-bold">
+              {editingEventIndex !== null ? 'Edit Tournament' : 'Schedule Tournament'}
+            </h2>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              placeholder="Tournament Name"
+              className="w-full p-2 border rounded"
+              required
+            />
+            <div className="flex space-x-2">
+              <input
+                type="time"
+                name="startTime"
+                value={formData.startTime}
+                onChange={handleInputChange}
+                className="w-1/2 p-2 border rounded"
+                required
+              />
+              <input
+                type="time"
+                name="endTime"
+                value={formData.endTime}
+                onChange={handleInputChange}
+                className="w-1/2 p-2 border rounded"
+              />
+            </div>
 
-  <input
-    type="file"
-    name="image"
-    accept="image/*"
-    onChange={handleInputChange}
-  />
+            <input
+              type="file"
+              name="image"
+              accept="image/*"
+              onChange={handleInputChange}
+            />
 
-  {/* Note input */}
-  <textarea
-    name="note"
-    value={formData.note || ''}
-    onChange={handleInputChange}
-    placeholder="Short note about the tournament..."
-    className="w-full p-2 border rounded"
-    rows={2}
-  />
+            <textarea
+              name="note"
+              value={formData.note || ''}
+              onChange={handleInputChange}
+              placeholder="Short note about the tournament..."
+              className="w-full p-2 border rounded"
+              rows={2}
+            />
 
-  {/* Platform toggles */}
-  <div className="flex items-center justify-between">
-    {['pc', 'playstation', 'xbox'].map((platform) => (
-      <button
-        key={platform}
-        type="button"
-        className={`flex-1 flex items-center justify-center gap-2 border rounded p-2 mx-1 
-          ${formData.platforms?.includes(platform) ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
-        onClick={() =>
-          setFormData((prev) => {
-            const platforms = prev.platforms || [];
-            return {
-              ...prev,
-              platforms: platforms.includes(platform)
-                ? platforms.filter((p) => p !== platform)
-                : [...platforms, platform],
-            };
-          })
-        }
-      >
-        <img
-          src={`/${platform}.svg`}
-          alt={platform}
-          className="w-5 h-5"
-        />
-        <span className="capitalize text-sm">{platform}</span>
-      </button>
-    ))}
-  </div>
+            <div className="flex items-center justify-between">
+              {['pc', 'playstation', 'xbox'].map((platform) => (
+                <button
+                  key={platform}
+                  type="button"
+                  className={`flex-1 flex items-center justify-center gap-2 border rounded p-2 mx-1 
+                    ${formData.platforms?.includes(platform) ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+                  onClick={() =>
+                    setFormData((prev) => {
+                      const platforms = prev.platforms || [];
+                      return {
+                        ...prev,
+                        platforms: platforms.includes(platform)
+                          ? platforms.filter((p) => p !== platform)
+                          : [...platforms, platform],
+                      };
+                    })
+                  }
+                >
+                  <img
+                    src={`/${platform}.svg`}
+                    alt={platform}
+                    className="w-5 h-5"
+                  />
+                  <span className="capitalize text-sm">{platform}</span>
+                </button>
+              ))}
+            </div>
 
-  {/* Links */}
-  {formData.links.map((link, index) => (
-    <div key={index} className="flex space-x-2">
-      <input
-        type="text"
-        name={`link-name-${index}`}
-        placeholder="Link Label"
-        value={link.name}
-        onChange={(e) => handleInputChange(e, index, 'name')}
-        className="w-1/2 p-2 border rounded"
-      />
-      <input
-        type="url"
-        name={`link-url-${index}`}
-        placeholder="URL"
-        value={link.url}
-        onChange={(e) => handleInputChange(e, index, 'url')}
-        className="w-1/2 p-2 border rounded"
-      />
-    </div>
-  ))}
-  <button
-    type="button"
-    onClick={addLinkField}
-    className="text-sm text-blue-500 hover:underline"
-  >
-    + Add another link
-  </button>
+            {formData.links.map((link, index) => (
+              <div key={index} className="flex space-x-2">
+                <input
+                  type="text"
+                  name={`link-name-${index}`}
+                  placeholder="Link Label"
+                  value={link.name}
+                  onChange={handleInputChange}
+                  className="w-1/2 p-2 border rounded"
+                />
+                <input
+                  type="url"
+                  name={`link-url-${index}`}
+                  placeholder="URL"
+                  value={link.url}
+                  onChange={handleInputChange}
+                  className="w-1/2 p-2 border rounded"
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addLinkField}
+              className="text-sm text-blue-500 hover:underline"
+            >
+              + Add another link
+            </button>
 
-  <div className="flex justify-end space-x-2">
-    <button
-      type="button"
-      onClick={() => setShowForm(false)}
-      className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-    >
-      Cancel
-    </button>
-    <button
-      type="submit"
-      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-    >
-      {editingEventIndex !== null ? 'Update' : 'Save'}
-    </button>
-  </div>
-</form>
-
+            <div className="flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                {editingEventIndex !== null ? 'Update' : 'Save'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -435,7 +427,7 @@ export default function TournamentCalendar() {
                 <div key={index} className="border p-4 mb-4 rounded-lg space-y-2 shadow relative">
                   <h3 className="text-lg font-semibold">{event.extendedProps.fullTitle}</h3>
                   <p>
-                    <b>Start:</b> {formatTime(event.extendedProps.startTime)} &nbsp; | &nbsp;
+                    <b>Start:</b> {formatTime(event.extendedProps.startTime)}   |  
                     <b>End:</b> {event.extendedProps.endTime ? formatTime(event.extendedProps.endTime) : 'N/A'}
                   </p>
                   {event.extendedProps.image && (
@@ -446,41 +438,40 @@ export default function TournamentCalendar() {
                     />
                   )}
                   <div className="flex flex-wrap gap-2">
-  {event.extendedProps.links?.map((link, i) => (
-    <a
-      key={i}
-      href={link.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm font-medium"
-    >
-      {link.name || `Link ${i + 1}`}
-    </a>
-  ))}
-</div>
+                    {event.extendedProps.links?.map((link, i) => (
+                      <a
+                        key={i}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm font-medium"
+                      >
+                        {link.name || `Link ${i + 1}`}
+                      </a>
+                    ))}
+                  </div>
 
-                  {/* Platform icons */}
                   {event.extendedProps.platforms?.length > 0 && (
-  <div className="flex items-center gap-2 mt-2">
-    {event.extendedProps.platforms.map((platform) => (
-      <img
-        key={platform}
-        src={`/${platform}.svg`}
-        alt={platform}
-        title={platform}
-        className="w-6 h-6"
-      />
-    ))}
-  </div>
-)}
+                    <div className="flex items-center gap-2 mt-2">
+                      {event.extendedProps.platforms.map((platform) => (
+                        <img
+                          key={platform}
+                          src={`/${platform}.svg`}
+                          alt={platform}
+                          title={platform}
+                          className="w-6 h-6"
+                        />
+                      ))}
+                    </div>
+                  )}
 
-{event.extendedProps.note && (
-  <div>
-    <p className="text-sm text-gray-700">
-      <b>Details:</b> {event.extendedProps.note}
-    </p>
-  </div>
-)}
+                  {event.extendedProps.note && (
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        <b>Details:</b> {event.extendedProps.note}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="absolute top-2 right-2 space-x-2">
                     <button
@@ -511,7 +502,5 @@ export default function TournamentCalendar() {
         </div>
       )}
     </div>
- };
-
- export default TournamentCalendar;
- 
+  );
+}
