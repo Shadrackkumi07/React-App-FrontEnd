@@ -163,101 +163,91 @@ export default function TournamentCalendar() {
   
     let imageUrl = null;
   
+    // Upload image to Cloudinary
     if (formData.image) {
       const uploadData = new FormData();
-      uploadData.append('file', formData.image);
-      uploadData.append('upload_preset', 'tourney');
+      uploadData.append("file", formData.image);
+      uploadData.append("upload_preset", "tourney");
   
       try {
-        const response = await fetch(
+        const res = await fetch(
           `https://api.cloudinary.com/v1_1/dfeedwjpf/image/upload`,
           {
-            method: 'POST',
+            method: "POST",
             body: uploadData,
           }
         );
-        const data = await response.json();
+        const data = await res.json();
         imageUrl = data.secure_url;
       } catch (error) {
-        console.error('Image upload failed:', error);
+        console.error("Image upload failed:", error);
       }
     }
   
-  
-    const newEvent = {
-      title: formData.title,
-      date: selectedDate,
-      extendedProps: {
-        fullTitle: formData.title,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        image: imageUrl,
-        note: formData.note,
-        platforms: formData.platforms,
-        links: formData.links.filter((l) => l.url.trim() !== ""),
-      },
-    };
-  
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: formData.title,
-          date: selectedDate,
-          startTime: formData.startTime,
-          endTime: formData.endTime,
-          image: imageUrl,
-          note: formData.note,
-          platforms: formData.platforms,
-          links: formData.links.filter((l) => l.url.trim() !== ''),
-        }),
-      });
+      // Save to backend
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/tournaments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: formData.title,
+            date: selectedDate,
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            image: imageUrl || "",
+            note: formData.note,
+            platforms: formData.platforms,
+            links: formData.links.filter((l) => l.url.trim() !== ""),
+          }),
+        }
+      );
+  
+      const savedTournament = await response.json(); // ✅ Get the full object with _id
+  
+      const newEvent = {
+        id: savedTournament._id, // ✅ Needed for FullCalendar and deletion
+        title: savedTournament.title,
+        date: savedTournament.date,
+        extendedProps: {
+          ...savedTournament, // ✅ Includes _id, image, note, etc.
+        },
+      };
+  
+      setEvents([...events, newEvent]);
+      setShowForm(false);
     } catch (err) {
-      console.error('Error saving tournament to backend:', err);
+      console.error("Error saving tournament to backend:", err);
     }
-  
-    let updatedEvents = [...events];
-    if (editingEventIndex !== null) {
-      updatedEvents[editingEventIndex] = newEvent;
-    } else {
-      updatedEvents.push(newEvent);
-    }
-  
-    setEvents(updatedEvents);
-    setFormData({
-      title: '',
-      image: null,
-      startTime: '',
-      endTime: '',
-      note: '',
-      platforms: [],
-      links: [{ name: '', url: '' }],
-    });
-    setShowForm(false);
-    setEditingEventIndex(null);
   };
+  
+  
 
   const handleDelete = async (tournamentId) => {
     if (!window.confirm('Are you sure you want to delete this tournament?')) return;
   
     try {
-      // Call backend to delete
+      // Delete from backend
       await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments/${tournamentId}`, {
         method: 'DELETE',
       });
   
-      // Update frontend state
-      setEvents((prev) =>
-        prev.filter((event) => event.extendedProps._id !== tournamentId)
+      // Remove from frontend state
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) =>
+          event._id !== tournamentId && event.extendedProps?._id !== tournamentId
+        )
       );
-      setSelectedTournaments((prev) =>
-        prev.filter((t) => t._id !== tournamentId)
+  
+      setSelectedTournaments((prevTournaments) =>
+        prevTournaments.filter((t) => t._id !== tournamentId)
       );
     } catch (error) {
       console.error('Error deleting tournament:', error);
     }
   };
+  
   
 
   const handleEditFromModal = (event, index) => {
