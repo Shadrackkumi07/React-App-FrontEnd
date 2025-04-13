@@ -163,32 +163,45 @@ export default function TournamentCalendar() {
   
     let imageUrl = null;
   
-    // Upload image to Cloudinary
     if (formData.image) {
       const uploadData = new FormData();
-      uploadData.append("file", formData.image);
-      uploadData.append("upload_preset", "tourney");
+      uploadData.append('file', formData.image);
+      uploadData.append('upload_preset', 'tourney');
   
       try {
         const response = await fetch(
           `https://api.cloudinary.com/v1_1/dfeedwjpf/image/upload`,
           {
-            method: "POST",
+            method: 'POST',
             body: uploadData,
           }
         );
         const data = await response.json();
         imageUrl = data.secure_url;
       } catch (error) {
-        console.error("Image upload failed:", error);
+        console.error('Image upload failed:', error);
       }
     }
   
+  
+    const newEvent = {
+      title: formData.title,
+      date: selectedDate,
+      extendedProps: {
+        fullTitle: formData.title,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        image: imageUrl,
+        note: formData.note,
+        platforms: formData.platforms,
+        links: formData.links.filter((l) => l.url.trim() !== ""),
+      },
+    };
+  
     try {
-      // POST to backend and get the saved tournament
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formData.title,
           date: selectedDate,
@@ -197,57 +210,33 @@ export default function TournamentCalendar() {
           image: imageUrl,
           note: formData.note,
           platforms: formData.platforms,
-          links: formData.links.filter((l) => l.url.trim() !== ""),
+          links: formData.links.filter((l) => l.url.trim() !== ''),
         }),
       });
-  
-      const savedTournament = await response.json(); // ✅ Get back _id from backend
-  
-      const newEvent = {
-        id: savedTournament._id, // ✅ Crucial for deletion and FullCalendar
-        title: savedTournament.title,
-        date: savedTournament.date,
-        extendedProps: {
-          fullTitle: savedTournament.title,
-          startTime: savedTournament.startTime,
-          endTime: savedTournament.endTime,
-          image: savedTournament.image,
-          note: savedTournament.note,
-          platforms: savedTournament.platforms,
-          links: savedTournament.links,
-          _id: savedTournament._id, // ✅ Store _id inside extendedProps too
-        },
-      };
-  
-      // Add or update event in state
-      let updatedEvents = [...events];
-      if (editingEventIndex !== null) {
-        updatedEvents[editingEventIndex] = newEvent;
-      } else {
-        updatedEvents.push(newEvent);
-      }
-  
-      setEvents(updatedEvents);
-  
-      // Reset form
-      setFormData({
-        title: '',
-        image: null,
-        startTime: '',
-        endTime: '',
-        note: '',
-        platforms: [],
-        links: [{ name: '', url: '' }],
-      });
-      setShowForm(false);
-      setEditingEventIndex(null);
     } catch (err) {
-      console.error("Error saving tournament to backend:", err);
+      console.error('Error saving tournament to backend:', err);
     }
+  
+    let updatedEvents = [...events];
+    if (editingEventIndex !== null) {
+      updatedEvents[editingEventIndex] = newEvent;
+    } else {
+      updatedEvents.push(newEvent);
+    }
+  
+    setEvents(updatedEvents);
+    setFormData({
+      title: '',
+      image: null,
+      startTime: '',
+      endTime: '',
+      note: '',
+      platforms: [],
+      links: [{ name: '', url: '' }],
+    });
+    setShowForm(false);
+    setEditingEventIndex(null);
   };
-  
-  
-  
 
   const handleDelete = async (tournamentId) => {
     if (!window.confirm('Are you sure you want to delete this tournament?')) return;
@@ -258,16 +247,14 @@ export default function TournamentCalendar() {
         method: 'DELETE',
       });
   
-      // Remove from frontend state
-      setEvents((prevEvents) =>
-        prevEvents.filter((event) =>
-          event._id !== tournamentId && event.extendedProps?._id !== tournamentId
-        )
+      // Update frontend state
+      const updatedEvents = events.filter(
+        (event) => event.extendedProps._id !== tournamentId
       );
   
-      setSelectedTournaments((prevTournaments) =>
-        prevTournaments.filter((t) => t._id !== tournamentId)
-      );
+      setEvents(updatedEvents);        // this triggers useEffect to update filteredEvents
+      setFilteredEvents(updatedEvents); // ensure it reflects immediately even if search is active
+      setShowDetailModal(false);       // close modal if desired (optional UX)
     } catch (error) {
       console.error('Error deleting tournament:', error);
     }
