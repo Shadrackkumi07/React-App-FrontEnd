@@ -19,50 +19,44 @@ export default function TournamentCalendar() {
     platforms: [],
     links: [{ name: '', url: '' }],
   });
+  
   const [showForm, setShowForm] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [modalDate, setModalDate] = useState(null);
-  const [editingTournamentId, setEditingTournamentId] = useState(null);
+  const [editingEventIndex, setEditingEventIndex] = useState(null);
   const calendarRef = useRef(null);
 
-  // Use the API URL from env for cloud deployment, or default to an empty string for localhost.
-  const baseURL = process.env.REACT_APP_API_URL || '';
-
-  // Fetch tournaments from the backend and enforce a plain date format (YYYY-MM-DD)
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const res = await fetch(`${baseURL}/api/tournaments`);
+        const res = await fetch("/api/tournaments");
         const data = await res.json();
-        const mapped = data.map((t) => {
-          // Ensure the stored date is converted to a plain date string.
-          const dateOnly = new Date(t.date).toISOString().split('T')[0];
-          return {
-            id: t._id, // FullCalendar can use this as the unique event id.
-            title: t.title,
-            date: dateOnly,
-            extendedProps: {
-              _id: t._id,
-              fullTitle: t.title,
-              startTime: t.startTime,
-              endTime: t.endTime,
-              image: t.image,
-              note: t.note,
-              platforms: t.platforms,
-              links: t.links,
-            },
-          };
-        });
+  
+        const mapped = data.map((t) => ({
+          title: t.title,
+          date: t.date,
+          extendedProps: {
+            _id: t._id,
+            fullTitle: t.title,
+            startTime: t.startTime,
+            endTime: t.endTime,
+            image: t.image,
+            note: t.note,
+            platforms: t.platforms,
+            links: t.links,
+          },
+        }));
+  
         setEvents(mapped);
       } catch (error) {
         console.error("Failed to fetch tournaments", error);
       }
     };
-
+  
     fetchTournaments();
-  }, [baseURL]);
+  }, []);
+  
 
-  // Close modals/form when pressing the Escape key.
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -74,7 +68,6 @@ export default function TournamentCalendar() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Attach plus button and detail modal handlers to day grid elements.
   useEffect(() => {
     const dayEls = document.querySelectorAll('.fc-daygrid-day');
     dayEls.forEach((el) => {
@@ -100,6 +93,7 @@ export default function TournamentCalendar() {
         const plusBtn = el.querySelector('.add-btn');
         if (plusBtn) plusBtn.classList.add('hidden');
       });
+
       el.addEventListener('click', () => {
         const dateStr = el.getAttribute('data-date');
         if (dateStr) {
@@ -110,7 +104,6 @@ export default function TournamentCalendar() {
     });
   }, [filteredEvents]);
 
-  // Filter events based on the search query.
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredEvents(events);
@@ -126,31 +119,23 @@ export default function TournamentCalendar() {
     }
   }, [searchQuery, events]);
 
-  // Opens the scheduling form when a day is clicked.
   const handleDateClick = (arg) => {
     setSelectedDate(arg.dateStr);
     setShowForm(true);
-    setEditingTournamentId(null);
-    setFormData({
-      title: '',
-      image: null,
-      startTime: '',
-      endTime: '',
-      note: '',
-      platforms: [],
-      links: [{ name: '', url: '' }],
-    });
+    setEditingEventIndex(null);
+    setFormData({ title: '', image: null, startTime: '', endTime: '', links: [{ name: '', url: '' }] });
   };
 
-  // Handles input changes on the form (includes file uploads and dynamic link fields).
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
+  
     if (name === 'image') {
       setFormData({ ...formData, image: files[0] });
     } else if (name.startsWith('link-name-') || name.startsWith('link-url-')) {
       const parts = name.split('-');
-      const index = parseInt(parts[2], 10);
+      const index = parseInt(parts[2]);
       const field = parts[1];
+  
       const updatedLinks = [...formData.links];
       updatedLinks[index][field] = value;
       setFormData({ ...formData, links: updatedLinks });
@@ -159,32 +144,30 @@ export default function TournamentCalendar() {
     }
   };
 
-  // Allows adding an extra link field.
   const addLinkField = () => {
     setFormData({ ...formData, links: [...formData.links, { name: '', url: '' }] });
   };
 
-  // Formats time to 12-hour display.
   const formatTime = (timeStr) => {
     if (!timeStr || !timeStr.includes(':')) return 'N/A';
     const [hour, minute] = timeStr.split(':');
-    const h = parseInt(hour, 10);
+    const h = parseInt(hour);
     const suffix = h >= 12 ? 'PM' : 'AM';
     const hour12 = h % 12 || 12;
     return `${hour12}:${minute} ${suffix}`;
   };
-
-  // Handles both creating and updating a tournament.
+  
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.startTime || !formData.endTime) return;
-
+  
     let imageUrl = null;
-    // If an image was selected, upload it.
+  
     if (formData.image) {
       const uploadData = new FormData();
       uploadData.append('file', formData.image);
       uploadData.append('upload_preset', 'tourney');
+  
       try {
         const response = await fetch(
           `https://api.cloudinary.com/v1_1/dfeedwjpf/image/upload`,
@@ -199,20 +182,9 @@ export default function TournamentCalendar() {
         console.error('Image upload failed:', error);
       }
     }
-
-    const tournamentData = {
-      title: formData.title,
-      date: selectedDate,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      image: imageUrl,
-      note: formData.note,
-      platforms: formData.platforms,
-      links: formData.links.filter((l) => l.url.trim() !== ''),
-    };
-
-    // Build a new event to send to the calendar.
-    let newEvent = {
+  
+  
+    const newEvent = {
       title: formData.title,
       date: selectedDate,
       extendedProps: {
@@ -222,54 +194,37 @@ export default function TournamentCalendar() {
         image: imageUrl,
         note: formData.note,
         platforms: formData.platforms,
-        links: formData.links.filter((l) => l.url.trim() !== ''),
+        links: formData.links.filter((l) => l.url.trim() !== ""),
       },
     };
-
-    if (editingTournamentId) {
-      // Update an existing tournament.
-      try {
-        const response = await fetch(`${baseURL}/api/tournaments/${editingTournamentId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(tournamentData),
-        });
-        const updatedData = await response.json();
-        newEvent = {
-          id: updatedData._id || editingTournamentId,
+  
+    try {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           title: formData.title,
           date: selectedDate,
-          extendedProps: { ...newEvent.extendedProps, _id: updatedData._id || editingTournamentId },
-        };
-        const updatedEvents = events.map((event) =>
-          event.extendedProps._id === editingTournamentId ? newEvent : event
-        );
-        setEvents(updatedEvents);
-      } catch (err) {
-        console.error('Error updating tournament:', err);
-      }
-    } else {
-      // Create a new tournament.
-      try {
-        const response = await fetch(`${baseURL}/api/tournaments`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(tournamentData),
-        });
-        const savedTournament = await response.json();
-        newEvent = {
-          id: savedTournament._id,
-          title: formData.title,
-          date: selectedDate,
-          extendedProps: { ...newEvent.extendedProps, _id: savedTournament._id },
-        };
-        setEvents([...events, newEvent]);
-      } catch (err) {
-        console.error('Error saving tournament:', err);
-      }
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          image: imageUrl,
+          note: formData.note,
+          platforms: formData.platforms,
+          links: formData.links.filter((l) => l.url.trim() !== ''),
+        }),
+      });
+    } catch (err) {
+      console.error('Error saving tournament to backend:', err);
     }
-
-    // Reset the form.
+  
+    let updatedEvents = [...events];
+    if (editingEventIndex !== null) {
+      updatedEvents[editingEventIndex] = newEvent;
+    } else {
+      updatedEvents.push(newEvent);
+    }
+  
+    setEvents(updatedEvents);
     setFormData({
       title: '',
       image: null,
@@ -280,28 +235,34 @@ export default function TournamentCalendar() {
       links: [{ name: '', url: '' }],
     });
     setShowForm(false);
-    setEditingTournamentId(null);
+    setEditingEventIndex(null);
   };
 
-  // Deletes a tournament from both backend and state.
   const handleDelete = async (tournamentId) => {
     if (!window.confirm('Are you sure you want to delete this tournament?')) return;
+  
     try {
-      await fetch(`${baseURL}/api/tournaments/${tournamentId}`, {
+      // Delete from backend
+      await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments/${tournamentId}`, {
         method: 'DELETE',
       });
+  
+      // Update frontend state
       const updatedEvents = events.filter(
         (event) => event.extendedProps._id !== tournamentId
       );
-      setEvents(updatedEvents);
-      setShowDetailModal(false);
+  
+      setEvents(updatedEvents);        // this triggers useEffect to update filteredEvents
+      setFilteredEvents(updatedEvents); // ensure it reflects immediately even if search is active
+      setShowDetailModal(false);       // close modal if desired (optional UX)
     } catch (error) {
       console.error('Error deleting tournament:', error);
     }
   };
+  
+  
 
-  // Pre-fills the form for editing.
-  const handleEditFromModal = (event) => {
+  const handleEditFromModal = (event, index) => {
     setFormData({
       title: event.extendedProps.fullTitle,
       image: null,
@@ -309,17 +270,14 @@ export default function TournamentCalendar() {
       endTime: event.extendedProps.endTime,
       note: event.extendedProps.note,
       platforms: event.extendedProps.platforms || [],
-      links: event.extendedProps.links && event.extendedProps.links.length > 0 
-              ? event.extendedProps.links 
-              : [{ name: '', url: '' }],
+      links: event.extendedProps.links.length > 0 ? event.extendedProps.links : [{ name: '', url: '' }],
     });
     setSelectedDate(event.date);
-    setEditingTournamentId(event.extendedProps._id);
+    setEditingEventIndex(index);
     setShowForm(true);
     setShowDetailModal(false);
   };
 
-  // Custom render function to include an image in the event display.
   const renderEventContent = (eventInfo) => {
     const { image } = eventInfo.event.extendedProps;
     return (
@@ -332,7 +290,6 @@ export default function TournamentCalendar() {
     );
   };
 
-  // Get tournaments scheduled on a specific date.
   const tournamentsOnDate = (dateStr) => events.filter((event) => event.date === dateStr);
 
   return (
@@ -360,7 +317,7 @@ export default function TournamentCalendar() {
             onSubmit={handleFormSubmit}
           >
             <h2 className="text-xl font-bold">
-              {editingTournamentId ? 'Edit Tournament' : 'Schedule Tournament'}
+              {editingEventIndex !== null ? 'Edit Tournament' : 'Schedule Tournament'}
             </h2>
             <input
               type="text"
@@ -474,7 +431,7 @@ export default function TournamentCalendar() {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                {editingTournamentId ? 'Update' : 'Save'}
+                {editingEventIndex !== null ? 'Update' : 'Save'}
               </button>
             </div>
           </form>
@@ -492,7 +449,7 @@ export default function TournamentCalendar() {
                 <div key={index} className="border p-4 mb-4 rounded-lg space-y-2 shadow relative">
                   <h3 className="text-lg font-semibold">{event.extendedProps.fullTitle}</h3>
                   <p>
-                    <b>Start:</b> {formatTime(event.extendedProps.startTime)}   |  
+                    <b>Start:</b> {formatTime(event.extendedProps.startTime)}   |  
                     <b>End:</b> {event.extendedProps.endTime ? formatTime(event.extendedProps.endTime) : 'N/A'}
                   </p>
                   {event.extendedProps.image && (
@@ -515,6 +472,7 @@ export default function TournamentCalendar() {
                       </a>
                     ))}
                   </div>
+
                   {event.extendedProps.platforms?.length > 0 && (
                     <div className="flex items-center gap-2 mt-2">
                       {event.extendedProps.platforms.map((platform) => (
@@ -528,6 +486,7 @@ export default function TournamentCalendar() {
                       ))}
                     </div>
                   )}
+
                   {event.extendedProps.note && (
                     <div>
                       <p className="text-sm text-gray-700">
@@ -535,15 +494,18 @@ export default function TournamentCalendar() {
                       </p>
                     </div>
                   )}
+
                   <div className="absolute top-2 right-2 space-x-2">
                     <button
                       onClick={() => handleEditFromModal(event)}
+
                       className="text-sm bg-yellow-400 px-2 py-1 rounded hover:bg-yellow-500"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(event.extendedProps._id)}
+
                       className="text-sm bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                     >
                       Delete
@@ -566,3 +528,4 @@ export default function TournamentCalendar() {
     </div>
   );
 }
+
