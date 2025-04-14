@@ -26,10 +26,14 @@ export default function TournamentCalendar() {
   const [editingEventIndex, setEditingEventIndex] = useState(null);
   const calendarRef = useRef(null);
 
+  // Use the API URL from env (for deployment) or default to empty (local)
+  const baseURL = process.env.REACT_APP_API_URL || "";
+
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const res = await fetch("/api/tournaments");
+        // Use baseURL here so that GET requests work in both local and deployed environments.
+        const res = await fetch(`${baseURL}/api/tournaments`);
         const data = await res.json();
   
         const mapped = data.map((t) => ({
@@ -54,7 +58,7 @@ export default function TournamentCalendar() {
     };
   
     fetchTournaments();
-  }, []);
+  }, [baseURL]);
   
 
   useEffect(() => {
@@ -183,7 +187,6 @@ export default function TournamentCalendar() {
       }
     }
   
-  
     const newEvent = {
       title: formData.title,
       date: selectedDate,
@@ -199,7 +202,7 @@ export default function TournamentCalendar() {
     };
   
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments`, {
+      await fetch(`${baseURL}/api/tournaments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -242,26 +245,22 @@ export default function TournamentCalendar() {
     if (!window.confirm('Are you sure you want to delete this tournament?')) return;
   
     try {
-      // Delete from backend
-      await fetch(`${process.env.REACT_APP_API_URL}/api/tournaments/${tournamentId}`, {
+      await fetch(`${baseURL}/api/tournaments/${tournamentId}`, {
         method: 'DELETE',
       });
   
-      // Update frontend state
       const updatedEvents = events.filter(
         (event) => event.extendedProps._id !== tournamentId
       );
   
-      setEvents(updatedEvents);        // this triggers useEffect to update filteredEvents
-      setFilteredEvents(updatedEvents); // ensure it reflects immediately even if search is active
-      setShowDetailModal(false);       // close modal if desired (optional UX)
+      setEvents(updatedEvents);
+      setFilteredEvents(updatedEvents);
+      setShowDetailModal(false);
     } catch (error) {
       console.error('Error deleting tournament:', error);
     }
   };
   
-  
-
   const handleEditFromModal = (event, index) => {
     setFormData({
       title: event.extendedProps.fullTitle,
@@ -449,7 +448,7 @@ export default function TournamentCalendar() {
                 <div key={index} className="border p-4 mb-4 rounded-lg space-y-2 shadow relative">
                   <h3 className="text-lg font-semibold">{event.extendedProps.fullTitle}</h3>
                   <p>
-                    <b>Start:</b> {formatTime(event.extendedProps.startTime)}   |  
+                    <b>Start:</b> {formatTime(event.extendedProps.startTime)}   |  
                     <b>End:</b> {event.extendedProps.endTime ? formatTime(event.extendedProps.endTime) : 'N/A'}
                   </p>
                   {event.extendedProps.image && (
@@ -498,14 +497,12 @@ export default function TournamentCalendar() {
                   <div className="absolute top-2 right-2 space-x-2">
                     <button
                       onClick={() => handleEditFromModal(event)}
-
                       className="text-sm bg-yellow-400 px-2 py-1 rounded hover:bg-yellow-500"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(event.extendedProps._id)}
-
                       className="text-sm bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                     >
                       Delete
@@ -528,4 +525,3 @@ export default function TournamentCalendar() {
     </div>
   );
 }
-
